@@ -20645,7 +20645,6 @@ static void test_bulk_delete_returning()
   MYSQL_BIND bind[2], res_bind[2];
   MYSQL_ROW  row;
   MYSQL_RES *result;
-  char       indicator[]= {0};
   int        i,
              id[]= {1, 2, 3, 4},
              count= sizeof(id)/sizeof(id[0]);
@@ -20670,7 +20669,6 @@ static void test_bulk_delete_returning()
   bind[0].buffer_type = MYSQL_TYPE_LONG;
   bind[0].buffer = (void *)id;
   bind[0].buffer_length = 0;
-  bind[0].u.indicator= indicator;
 
   mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, (void*)&count);
   rc= mysql_stmt_bind_param(stmt, bind);
