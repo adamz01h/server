@@ -20548,7 +20548,7 @@ static void test_bulk_replace()
 }
 
 
-static void test_bulk_insert_return()
+static void test_bulk_insert_returning()
 {
   int rc;
   MYSQL_STMT *stmt;
@@ -20631,6 +20631,90 @@ static void test_bulk_insert_return()
     DIE_IF(atoi(row[1]) != 1);
   }
   DIE_IF(i != 4);
+  mysql_free_result(result);
+
+
+  rc= mysql_query(mysql, "DROP TABLE t1");
+  myquery(rc);
+}
+
+static void test_bulk_delete_returning()
+{
+  int rc;
+  MYSQL_STMT *stmt;
+  MYSQL_BIND bind[2], res_bind[2];
+  MYSQL_ROW  row;
+  MYSQL_RES *result;
+  char       indicator[]= {0};
+  int        i,
+             id[]= {1, 2, 3, 4},
+             count= sizeof(id)/sizeof(id[0]);
+  unsigned long length[1];
+  my_bool       is_null[1];
+  my_bool       error[1];
+  int32_t       res[1];
+
+  rc= mysql_query(mysql, "DROP TABLE IF EXISTS t1");
+  myquery(rc);
+  rc= mysql_query(mysql, "CREATE TABLE t1 (id int not null primary key)");
+  myquery(rc);
+  rc= mysql_query(mysql, "insert into t1 values (1), (2), (3), (4)");
+  myquery(rc);
+  verify_affected_rows(4);
+
+  stmt= mysql_stmt_init(mysql);
+  rc= mysql_stmt_prepare(stmt, "DELETE FROM t1 WHERE id=? RETURNING id", -1);
+  check_execute(stmt, rc);
+
+  memset(bind, 0, sizeof(bind));
+  bind[0].buffer_type = MYSQL_TYPE_LONG;
+  bind[0].buffer = (void *)id;
+  bind[0].buffer_length = 0;
+  bind[0].u.indicator= indicator;
+
+  mysql_stmt_attr_set(stmt, STMT_ATTR_ARRAY_SIZE, (void*)&count);
+  rc= mysql_stmt_bind_param(stmt, bind);
+  check_execute(stmt, rc);
+
+  rc= mysql_stmt_execute(stmt);
+  myquery(rc);
+
+  memset(bind, 0, sizeof(res_bind));
+  res_bind[0].buffer_type= MYSQL_TYPE_LONG;
+  res_bind[0].buffer= (char *)&res[0];
+  res_bind[0].is_null= &is_null[0];
+  res_bind[0].length= &length[0];
+  res_bind[0].error= &error[0];
+  rc= mysql_stmt_bind_result(stmt, res_bind);
+  myquery(rc);
+  rc= mysql_stmt_store_result(stmt);
+  myquery(rc);
+
+  i= 0;
+  while (!mysql_stmt_fetch(stmt))
+  {
+    i++;
+    //DIE_IF(is_null[0]);
+    printf("\nXXX %d - %d (%d)", i, res[0], is_null[0]);
+    //DIE_IF(res[0] != i);
+  }
+  //DIE_IF(i != 4);
+
+  mysql_stmt_close(stmt);
+
+  rc= mysql_query(mysql, "SELECT id FROM t1");
+  myquery(rc);
+
+  result= mysql_store_result(mysql);
+  mytest(result);
+
+  i= 0;
+  while ((row= mysql_fetch_row(result)))
+  {
+    i++;
+    printf("\nXXX %d %s \n", i, row[0]);
+  }
+  DIE_IF(i != 0 );
   mysql_free_result(result);
 
 
@@ -21035,7 +21119,7 @@ static struct my_tests_st my_tests[]= {
 #ifdef NOT_YET_WORKING
   { "test_drop_temp", test_drop_temp },
 #endif
-  { "test_bulk_insert_return", test_bulk_insert_return },
+  { "test_bulk_delete_returning", test_bulk_delete_returning },
   { "test_fetch_seek", test_fetch_seek },
   { "test_fetch_nobuffs", test_fetch_nobuffs },
   { "test_open_direct", test_open_direct },
@@ -21315,7 +21399,8 @@ static struct my_tests_st my_tests[]= {
   { "test_bulk_autoinc", test_bulk_autoinc},
   { "test_bulk_delete", test_bulk_delete },
   { "test_bulk_replace", test_bulk_replace },
-  { "test_bulk_insert_return", test_bulk_insert_return },
+  { "test_bulk_insert_returnung", test_bulk_insert_returning },
+  { "test_bulk_delete_returning", test_bulk_delete_returning },
 #endif
   { "test_explain_meta", test_explain_meta },
   { "test_mdev18408", test_mdev18408 },

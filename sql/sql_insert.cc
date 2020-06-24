@@ -783,17 +783,10 @@ bool mysql_insert(THD *thd, TABLE_LIST *table_list,
         The old buffer will be freed at the end of operation.
       */
       DBUG_ASSERT(thd->protocol == &thd->protocol_binary);
-      readbuff= thd->net.buff;
-
-      if (net_allocate_new_packet(&thd->net, thd, MYF(MY_THREAD_SPECIFIC)))
+      if ((readbuff=
+           net_try_allocate_new_packet(&thd->net, thd,
+                                       MYF(MY_THREAD_SPECIFIC))) == NULL)
       {
-        /*
-          We ailed to allocate a new buffer return the old buffer and
-          return an error
-        */
-        thd->net.buff= readbuff;
-        net_reset_new_packet(&thd->net);
-        readbuff= NULL;
         goto abort;
       }
     }
